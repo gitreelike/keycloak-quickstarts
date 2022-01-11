@@ -33,40 +33,19 @@ import java.util.Set;
  */
 public class SysoutEventListenerProviderFactory implements EventListenerProviderFactory {
 
-    private Set<EventType> excludedEvents;
-    private Set<OperationType> excludedAdminOperations;
-
     @Override
     public EventListenerProvider create(KeycloakSession session) {
-        return new SysoutEventListenerProvider(excludedEvents, excludedAdminOperations);
+        return new SysoutEventListenerProvider(session);
     }
 
     @Override
-    public void init(Config.Scope config) {
-        String[] excludes = config.getArray("exclude-events");
-        if (excludes != null) {
-            excludedEvents = new HashSet<>();
-            for (String e : excludes) {
-                excludedEvents.add(EventType.valueOf(e));
-            }
-        }
-        
-        String[] excludesOperations = config.getArray("excludesOperations");
-        if (excludesOperations != null) {
-            excludedAdminOperations = new HashSet<>();
-            for (String e : excludesOperations) {
-                excludedAdminOperations.add(OperationType.valueOf(e));
-            }
-        }
-    }
+    public void init(Config.Scope config) {}
 
     @Override
-    public void postInit(KeycloakSessionFactory factory) {
+    public void postInit(KeycloakSessionFactory factory) {}
 
-    }
     @Override
-    public void close() {
-    }
+    public void close() {}
 
     @Override
     public String getId() {

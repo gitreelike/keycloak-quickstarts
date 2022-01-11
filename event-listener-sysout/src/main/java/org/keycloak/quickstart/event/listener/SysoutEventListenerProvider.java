@@ -22,104 +22,46 @@ import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.events.admin.OperationType;
-
-import java.util.Map;
-import java.util.Set;
+import org.keycloak.events.admin.ResourceType;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.UserModel;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
  */
 public class SysoutEventListenerProvider implements EventListenerProvider {
 
-    private Set<EventType> excludedEvents;
-    private Set<OperationType> excludedAdminOperations;
+    private KeycloakSession session;
 
-    public SysoutEventListenerProvider(Set<EventType> excludedEvents, Set<OperationType> excludedAdminOpearations) {
-        this.excludedEvents = excludedEvents;
-        this.excludedAdminOperations = excludedAdminOpearations;
+    public SysoutEventListenerProvider(KeycloakSession session) {
+        this.session = session;
     }
 
     @Override
     public void onEvent(Event event) {
-        // Ignore excluded events
-        if (excludedEvents != null && excludedEvents.contains(event.getType())) {
-            return;
-        } else {
-            System.out.println("EVENT: " + toString(event));
+        if (event.getType() == EventType.REGISTER) {
+            final UserModel user = session.users().getUserById(session.getContext().getRealm(), event.getUserId());
+            user.setSingleAttribute("setByEventListener", "onEvent(Event event)");
+            session.getTransactionManager().setRollbackOnly();
         }
     }
 
     @Override
     public void onEvent(AdminEvent event, boolean includeRepresentation) {
-        // Ignore excluded operations
-        if (excludedAdminOperations != null && excludedAdminOperations.contains(event.getOperationType())) {
-            return;
-        } else {
-            System.out.println("EVENT: " + toString(event));
+        if (event.getResourceType() == ResourceType.USER && event.getOperationType() == OperationType.CREATE) {
+            final String userId = userIdFromResourcePath(event.getResourcePath());
+            final UserModel user = session.users().getUserById(session.getContext().getRealm(), userId);
+            user.setSingleAttribute("setByEventListener", "onEvent(AdminEvent event, boolean includeRepresentation)");
+            session.getTransactionManager().setRollbackOnly();
         }
     }
 
-    private String toString(Event event) {
-        StringBuilder sb = new StringBuilder();
+    private String userIdFromResourcePath(String path) {
+        final String[] components = path.split("/");
 
-        sb.append("type=");
-        sb.append(event.getType());
-        sb.append(", realmId=");
-        sb.append(event.getRealmId());
-        sb.append(", clientId=");
-        sb.append(event.getClientId());
-        sb.append(", userId=");
-        sb.append(event.getUserId());
-        sb.append(", ipAddress=");
-        sb.append(event.getIpAddress());
-
-        if (event.getError() != null) {
-            sb.append(", error=");
-            sb.append(event.getError());
-        }
-
-        if (event.getDetails() != null) {
-            for (Map.Entry<String, String> e : event.getDetails().entrySet()) {
-                sb.append(", ");
-                sb.append(e.getKey());
-                if (e.getValue() == null || e.getValue().indexOf(' ') == -1) {
-                    sb.append("=");
-                    sb.append(e.getValue());
-                } else {
-                    sb.append("='");
-                    sb.append(e.getValue());
-                    sb.append("'");
-                }
-            }
-        }
-
-        return sb.toString();
+        return components[components.length - 1];
     }
-    
-    private String toString(AdminEvent adminEvent) {
-        StringBuilder sb = new StringBuilder();
 
-        sb.append("operationType=");
-        sb.append(adminEvent.getOperationType());
-        sb.append(", realmId=");
-        sb.append(adminEvent.getAuthDetails().getRealmId());
-        sb.append(", clientId=");
-        sb.append(adminEvent.getAuthDetails().getClientId());
-        sb.append(", userId=");
-        sb.append(adminEvent.getAuthDetails().getUserId());
-        sb.append(", ipAddress=");
-        sb.append(adminEvent.getAuthDetails().getIpAddress());
-        sb.append(", resourcePath=");
-        sb.append(adminEvent.getResourcePath());
-
-        if (adminEvent.getError() != null) {
-            sb.append(", error=");
-            sb.append(adminEvent.getError());
-        }
-        
-        return sb.toString();
-    }
-    
     @Override
     public void close() {
     }
